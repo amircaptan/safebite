@@ -1,8 +1,8 @@
 <?php
-$host = getenv("DB_HOST") ?: "localhost";
+$host = getenv("DB_HOST") ?: "mysql";
 $db   = getenv("DB_NAME") ?: "safebite";
-$user = getenv("DB_USER") ?: "root";
-$pass = getenv("DB_PASS") ?: "";
+$user = getenv("DB_USER") ?: "safebite";
+$pass = getenv("DB_PASS") ?: "Spurs2002";
 
 try {
   $pdo = new PDO(
