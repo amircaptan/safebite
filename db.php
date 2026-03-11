@@ -1,8 +1,8 @@
 <?php
-$host = "localhost";
-$db   = "safebite";
-$user = "root";
-$pass = ""; // XAMPP default
+$host = getenv("DB_HOST") ?: "localhost";
+$db   = getenv("DB_NAME") ?: "safebite";
+$user = getenv("DB_USER") ?: "root";
+$pass = getenv("DB_PASS") ?: "";
 
 try {
   $pdo = new PDO(
