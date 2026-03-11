@@ -1,0 +1,1746 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Safe Bite — Simple Allergy Menu Checker</title>
+  <meta name="description" content="Create an account, log in, and check menus with personalised allergy flags." />
+
+  <!-- PWA bits (keep if you already have them) -->
+  <link rel="manifest" href="./manifest.webmanifest">
+  <meta name="theme-color" content="#0b1220">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="/icons/icon-192.png">
+
+<link rel="manifest" href="./manifest.webmanifest">
+
+
+  <meta
+  name="viewport"
+  content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
+/>
+
+  <!-- Minimal CSS so this file runs standalone.
+       Replace with your existing CSS if you already have it. -->
+  <style>
+    :root{
+      --bg:#0b1220;
+      --panel:#0f1a30;
+      --panel2:#101f3a;
+      --text:#eaf0ff;
+      --muted:#a9b5d6;
+      --line:rgba(255,255,255,.12);
+      --shadow: 0 18px 50px rgba(0,0,0,.35);
+
+      --focus:#7dd3fc;
+      --good:#34d399;
+      --warn:#fbbf24;
+      --bad:#fb7185;
+
+      --radius:18px;
+    }
+    *{ box-sizing:border-box; }
+    html,body{ height:100%; }
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      color:var(--text);
+      background:
+        radial-gradient(1200px 600px at 15% -10%, rgba(91,140,255,.25), transparent 55%),
+        radial-gradient(900px 500px at 90% 0%, rgba(125,211,252,.18), transparent 55%),
+        radial-gradient(1100px 700px at 50% 120%, rgba(59,91,219,.22), transparent 60%),
+        var(--bg);
+    }
+    a{ color:inherit; }
+    .wrap{ max-width:1180px; margin:0 auto; padding:22px; }
+
+    header{
+      display:flex; gap:16px; align-items:center; justify-content:space-between;
+      margin-bottom:16px;
+    }
+    .brand{ display:flex; gap:12px; align-items:center; }
+    .logo{
+      width:44px; height:44px; border-radius:14px;
+      display:grid; place-items:center;
+      font-weight:900;
+      background:linear-gradient(135deg, rgba(91,140,255,.95), rgba(59,91,219,.85));
+      box-shadow: 0 12px 30px rgba(59,91,219,.25);
+    }
+    .title h1{ margin:0; font-size:20px; letter-spacing:.2px; }
+    .row{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+    .pill{
+      display:inline-flex; gap:8px; align-items:center;
+      padding:10px 12px; border-radius:999px;
+      border:1px solid var(--line);
+      background: rgba(255,255,255,.06);
+      font-size:13px;
+    }
+
+    .btn{
+      appearance:none; border:1px solid var(--line);
+      background: rgba(255,255,255,.06);
+      color:var(--text);
+      border-radius:14px;
+      padding:10px 12px;
+      font-weight:700;
+      cursor:pointer;
+      transition: transform .08s ease, background .15s ease, border-color .15s ease;
+      display:inline-flex; align-items:center; justify-content:center;
+      gap:8px;
+    }
+    .btn:hover{ background: rgba(255,255,255,.09); }
+    .btn:active{ transform: translateY(1px); }
+    .btn.primary{
+      border-color: rgba(125,211,252,.35);
+      background: linear-gradient(135deg, rgba(91,140,255,.25), rgba(125,211,252,.12));
+    }
+    .btn.danger{
+      border-color: rgba(251,113,133,.35);
+      background: linear-gradient(135deg, rgba(251,113,133,.18), rgba(255,255,255,.05));
+    }
+    .btn.small{ padding:8px 10px; border-radius:12px; font-size:12px; }
+
+    .grid{
+      display:grid;
+      grid-template-columns: 1fr 1.2fr;
+      gap:16px;
+      align-items:start;
+    }
+    @media (max-width: 980px){
+      header{ flex-direction:column; align-items:flex-start; }
+      .grid{ grid-template-columns: 1fr; }
+    }
+
+    .card{
+      border:1px solid var(--line);
+      background: linear-gradient(180deg, rgba(16,31,58,.72), rgba(15,26,48,.66));
+      box-shadow: var(--shadow);
+      border-radius: var(--radius);
+      overflow:hidden;
+    }
+    .cardHead{
+      padding:16px 16px 12px;
+      border-bottom:1px solid var(--line);
+      display:flex; align-items:flex-start; justify-content:space-between; gap:12px;
+    }
+    .cardHead h2{ margin:0; font-size:16px; }
+    .sub{ margin:6px 0 0; font-size:13px; color:var(--muted); }
+    .cardBody{ padding:16px; }
+    .stack{ display:grid; gap:10px; }
+    .muted{ color:var(--muted); }
+    label{ display:block; font-size:12px; color:rgba(234,240,255,.88); font-weight:800; letter-spacing:.2px; margin-bottom:8px;}
+    input, select, textarea{
+      width:100%;
+      border:1px solid var(--line);
+      background: rgba(255,255,255,.06);
+      color:var(--text);
+      padding:10px 12px;
+      border-radius:14px;
+      outline:none;
+    }
+    input:focus, select:focus, textarea:focus{
+      border-color: rgba(125,211,252,.55);
+      box-shadow: 0 0 0 4px rgba(125,211,252,.14);
+    }
+    textarea{ min-height:90px; resize:vertical; }
+    .helper{ font-size:12px; color:var(--muted); margin-top:6px; }
+    .note{
+      padding:12px 14px;
+      border-top:1px solid var(--line);
+      background: rgba(0,0,0,.14);
+      color:rgba(234,240,255,.86);
+      font-size:12px;
+    }
+
+    .legend{ display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end; }
+    .tag{
+      display:inline-flex; gap:8px; align-items:center;
+      border:1px solid var(--line);
+      background: rgba(255,255,255,.06);
+      padding:8px 10px; border-radius:999px; font-size:12px;
+    }
+    .dot{ width:10px; height:10px; border-radius:50%; display:inline-block; }
+    .dot.good{ background: var(--good); }
+    .dot.warn{ background: var(--warn); }
+    .dot.bad{ background: var(--bad); }
+
+    .toolbar{
+      display:flex; gap:12px; padding:14px 16px;
+      border-bottom:1px solid var(--line);
+      background: rgba(0,0,0,.10);
+      flex-wrap:wrap;
+    }
+    .grow{ flex: 1 1 320px; min-width:260px; }
+    .small{ width: 220px; max-width:100%; }
+    .menuList{ padding:16px; display:grid; gap:16px; }
+
+    .restaurant{ border:1px solid var(--line); border-radius:16px; overflow:hidden; background: rgba(255,255,255,.04); }
+    .restHead{
+      padding:14px 14px 12px;
+      display:flex; justify-content:space-between; gap:10px; align-items:center;
+      border-bottom:1px solid var(--line);
+    }
+    .restHead h3{ margin:0; font-size:14px; }
+    .restHead p{ margin:6px 0 0; font-size:12px; color:var(--muted); }
+    .badge{
+      font-size:12px; font-weight:900;
+      padding:8px 10px;
+      border-radius:999px;
+      border:1px solid var(--line);
+      background: rgba(255,255,255,.06);
+    }
+    .dishes{ padding:12px; display:grid; gap:10px; }
+    .dish{
+      border:1px solid var(--line);
+      border-radius:16px;
+      padding:12px;
+      background: rgba(0,0,0,.12);
+      display:grid;
+      grid-template-columns: 1fr auto;
+      gap:12px;
+      align-items:start;
+    }
+    .dish h4{ margin:0 0 6px; font-size:14px; }
+    .dish p{ margin:0; font-size:12px; color:var(--muted); line-height:1.35; }
+    .right{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; justify-content:flex-end; }
+    .status{
+      display:inline-flex; gap:8px; align-items:center;
+      padding:8px 10px;
+      border-radius:999px;
+      border:1px solid var(--line);
+      font-size:12px; font-weight:900;
+      background: rgba(255,255,255,.05);
+      white-space:nowrap;
+    }
+    .status.good{ border-color: rgba(52,211,153,.35); }
+    .status.warn{ border-color: rgba(251,191,36,.35); }
+    .status.bad{ border-color: rgba(251,113,133,.35); }
+    .status .icon{ font-size:14px; }
+    .detailsBtn{ padding:8px 10px; border-radius:12px; font-size:12px; }
+    .details{
+      grid-column:1 / -1;
+      display:none;
+      margin-top:8px;
+      padding-top:10px;
+      border-top:1px solid var(--line);
+      font-size:12px;
+      color:rgba(234,240,255,.88);
+    }
+    .details ul{ margin:10px 0 0; padding-left:18px; color:rgba(234,240,255,.86); }
+    .details li{ margin:6px 0; }
+
+    .chips{ display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
+    .chip{
+      display:inline-flex; align-items:center; gap:8px;
+      padding:8px 10px;
+      border-radius:999px;
+      border:1px solid var(--line);
+      background: rgba(255,255,255,.06);
+      font-size:12px;
+    }
+    .chip button{
+      border:none; background:transparent; color:rgba(234,240,255,.8);
+      font-weight:900; cursor:pointer; padding:0 2px;
+    }
+
+    .tabs{
+      padding:12px 16px 0;
+      display:inline-flex;
+      gap:10px;
+    }
+    .tab{
+      border:1px solid var(--line);
+      background: rgba(255,255,255,.05);
+      color:var(--text);
+      padding:9px 12px;
+      border-radius:999px;
+      font-weight:900;
+      cursor:pointer;
+    }
+    .tab.active{
+      border-color: rgba(125,211,252,.55);
+      background: rgba(125,211,252,.12);
+    }
+
+    .backdrop{
+      position:fixed; inset:0;
+      display:none;
+      align-items:center; justify-content:center;
+      padding:18px;
+      background: rgba(0,0,0,.62);
+      backdrop-filter: blur(8px);
+      z-index:999;
+    }
+/* Modal shell */
+.modal{
+  width: min(620px, 100%);              /* tighter than 740px */
+  max-height: 86vh;                      /* never runs off screen */
+  border-radius: 20px;
+  border: 1px solid var(--line);
+  background: linear-gradient(180deg, rgba(16,31,58,.92), rgba(15,26,48,.92));
+  box-shadow: 0 24px 90px rgba(0,0,0,.55);
+  overflow: hidden;                      /* keeps header corners clean */
+}
+
+/* Header */
+.modalHead{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding: 12px 14px;                    /* slightly tighter */
+  border-bottom: 1px solid var(--line);
+  background: rgba(0,0,0,.12);
+}
+.modalHead h3{
+  margin:0;
+  font-size:14px;
+  letter-spacing:.2px;
+}
+
+/* Body (scroll inside modal, not page) */
+.modalBody{
+  padding: 14px;
+  max-height: calc(86vh - 120px);        /* header + tabs space */
+  overflow: auto;
+}
+
+/* Make form rows wrap so the create account form doesn't stretch */
+.modalBody .row{
+  flex-wrap: wrap;
+  align-items: stretch;
+}
+.modalBody .row > div{
+  flex: 1 1 260px;                       /* wraps into 1 column when needed */
+  min-width: 260px;
+}
+
+/* Optional: slightly tighter tab spacing if you use tabs */
+.tabs{
+  padding: 10px 14px 0;
+}
+
+    .infoList{ list-style:none; margin:0; padding:0; display:grid; gap:10px; }
+    .infoItem{
+      width:100%;
+      border:1px solid var(--line);
+      background: rgba(255,255,255,.06);
+      border-radius:16px;
+      padding:12px;
+      color:var(--text);
+      cursor:pointer;
+      display:flex; gap:12px; align-items:center;
+      text-align:left;
+    }
+    .infoItem.active{ border-color: rgba(125,211,252,.45); background: rgba(125,211,252,.10); }
+    .infoItem span{ font-size:18px; }
+    .infoItem strong{ display:block; font-size:13px; }
+    .infoItem small{ display:block; font-size:12px; color:var(--muted); margin-top:2px; }
+    .infoDetails{
+      display:none;
+      padding:10px 12px 12px;
+      margin-top:8px;
+      border-left:2px solid rgba(125,211,252,.45);
+      color:rgba(234,240,255,.88);
+      font-size:12px;
+      line-height:1.45;
+    }
+
+
+    /* Prevent iOS auto-zoom on input focus */
+input,
+select,
+textarea,
+button {
+  font-size: 16px;
+}
+
+/* Keep desktop sizing untouched */
+@media (min-width: 768px) {
+  input,
+  select,
+  textarea,
+  button {
+    font-size: 14px;
+  }
+}
+
+html, body {
+  touch-action: manipulation;
+  overscroll-behavior: contain;
+  -webkit-text-size-adjust: 100%;
+}
+
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <header>
+      <div class="brand">
+        <div class="logo" aria-hidden="true">SB</div>
+        <div class="title">
+          <h1>Safe Bite</h1>
+        </div>
+      </div>
+
+      <div class="row" style="justify-content:flex-end;">
+        <div class="pill" role="status" aria-live="polite">
+          <span aria-hidden="true">🛡️</span>
+          <span id="profileSummary">Not signed in</span>
+        </div>
+
+        <!-- When logged OUT: show Create Account + Log in -->
+        <button class="btn primary" id="createAccountBtn" type="button">Create account</button>
+        <button class="btn" id="loginBtn" type="button">Log in</button>
+
+        <!-- When logged IN -->
+        <button class="btn primary" id="profileBtn" type="button" style="display:none;">Profile</button>
+        <button class="btn danger" id="logoutBtn" type="button" style="display:none;">Log out</button>
+      </div>
+    </header>
+
+    <main class="grid" aria-label="SafeBite tool">
+      <!-- LEFT -->
+      <section class="card" aria-labelledby="leftTitle">
+        <div class="cardHead">
+          <div>
+            <h2 id="leftTitle">Allergy Information Guide</h2>
+            <p class="sub">Education on your allergies.</p>
+
+            <div class="stack" style="gap:12px; margin-top:12px;">
+              <p class="muted" style="font-size:13px;">
+                Learn how common allergies work, where they appear, and what to watch for when ordering.
+              </p>
+
+              <ul class="infoList" id="allergyGuide">
+                <li>
+                  <button type="button" class="infoItem" data-key="nuts">
+                    <span>🥜</span>
+                    <div>
+                      <strong>Nut Allergies</strong>
+                      <small>Peanuts, tree nuts, cross-contact risks</small>
+                    </div>
+                  </button>
+                  <div class="infoDetails">
+                    <p>Nut allergies are one of the most cross-contact-prone allergies in restaurants. Even when a dish doesn’t contain nuts directly, risk often comes from shared equipment rather than ingredients.</p>
+                    <p>Bakeries, dessert stations, grills, and sauce prep areas frequently use nuts or nut oils, and traces can transfer via chopping boards, blenders, or fryers. Pesto, curries, desserts, dressings, and “chef’s sauces” are common hidden sources.</p>
+                  </div>
+                </li>
+
+                <li>
+                  <button type="button" class="infoItem" data-key="dairy">
+                    <span>🥛</span>
+                    <div>
+                      <strong>Dairy</strong>
+                      <small>Milk, cheese, butter, hidden ingredients</small>
+                    </div>
+                  </button>
+                  <div class="infoDetails">
+                    <p>Dairy is widely embedded in restaurant cooking (breads, marinades, mash, soups, sauces, dressings, glazes). Butter is commonly used for finishing without being listed.</p>
+                    <p>If you have a milk allergy (not just intolerance), treat “creamy”, “rich”, “house sauce” as caution triggers and ask how it’s prepared.</p>
+                  </div>
+                </li>
+
+                <li>
+                  <button type="button" class="infoItem" data-key="gluten">
+                    <span>🌾</span>
+                    <div>
+                      <strong>Gluten</strong>
+                      <small>Wheat, barley, rye, sauces</small>
+                    </div>
+                  </button>
+                  <div class="infoDetails">
+                    Gluten appears in bread, batter, pastry, pasta, soy sauce, gravies,
+                    and fried foods due to shared fryers.
+                  </div>
+                </li>
+
+                <li>
+                  <button type="button" class="infoItem" data-key="shellfish">
+                    <span>🦐</span>
+                    <div>
+                      <strong>Shellfish</strong>
+                      <small>Prawns, shrimp, shared fryers</small>
+                    </div>
+                  </button>
+                  <div class="infoDetails">
+                    Shellfish proteins linger in fryers, grills, and oils.
+                    Even “plain” chips may be risky if fried together.
+                  </div>
+                </li>
+
+                <li>
+                  <button type="button" class="infoItem" data-key="soy">
+                    <span>🌱</span>
+                    <div>
+                      <strong>Soy & Legumes</strong>
+                      <small>Soy sauce, oils, marinades</small>
+                    </div>
+                  </button>
+                  <div class="infoDetails">
+                    Soy is common in sauces, marinades, oils, dressings, and vegetarian dishes.
+                    Look for soy sauce, tofu, miso, or vegetable protein.
+                  </div>
+                </li>
+              </ul>
+
+              <div class="note" style="border:1px solid var(--line); border-radius:14px;">
+                Tap an allergy to learn where it commonly appears on menus.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="cardBody stack">
+          <!-- SIGNED OUT PANEL -->
+          <div id="signedOutPanel" class="stack">
+            <div style="padding:12px; border:1px solid var(--line); border-radius:14px; background:rgba(0,0,0,.16)">
+              <div style="font-weight:900; letter-spacing:.2px;">Sign in to use SafeBite</div>
+              <div class="muted" style="font-size:12px; margin-top:4px;">
+                Create an account to save allergies, intolerances, preferences, and notes. Then log in to see personalised dish flags.
+              </div>
+              <div class="row" style="margin-top:10px;">
+                <button class="btn primary" id="signedOutCreateBtn" type="button">➕ Create account</button>
+                <button class="btn" id="signedOutLoginBtn" type="button">🔐 Log in</button>
+              </div>
+            </div>
+
+            <div class="note" style="border-radius:14px; border:1px solid var(--line);">
+              <strong>Safety note:</strong> SafeBite is guidance only. Ingredients can change and cross-contact can occur. Always ask staff.
+            </div>
+          </div>
+
+          <!-- LOGGED-IN VIEW -->
+          <div id="profilePanel" class="stack" style="display:none;">
+            <div style="padding:12px; border:1px solid var(--line); border-radius:14px; background:rgba(0,0,0,.16)">
+              <div class="row" style="justify-content:space-between; align-items:baseline;">
+                <div>
+                  <div style="font-weight:900;" id="pName">—</div>
+                  <div class="muted" style="font-size:12px;" id="pMeta">—</div>
+                </div>
+                <span class="badge" id="pMode">—</span>
+              </div>
+
+              <div style="height:1px;background:var(--line);margin:12px 0;"></div>
+
+              <div class="stack" style="gap:12px;">
+                <div>
+                  <label>Allergies</label>
+                  <div class="chips" id="pAllergies"></div>
+                </div>
+                <div>
+                  <label>Intolerances</label>
+                  <div class="chips" id="pIntolerances"></div>
+                </div>
+                <div>
+                  <label>Preferences</label>
+                  <div class="chips" id="pPreferences"></div>
+                  <div class="helper">Preferences can include Halal, Vegetarian, Vegan, No pork, etc.</div>
+                </div>
+                <div>
+                  <label>Notes</label>
+                  <div class="muted" id="pNotes" style="font-size:12px; background:rgba(0,0,0,.14); border:1px solid var(--line); border-radius:12px; padding:10px 12px;">
+                    —
+                  </div>
+                </div>
+                <div class="row" style="justify-content:space-between;">
+                  <button class="btn primary" id="editProfileBtn" type="button">✏️ Edit profile</button>
+                  <span class="muted" style="font-size:12px;">Saved to your account (database).</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="note" style="border-radius:14px; border:1px solid var(--line);">
+              <strong>Reminder:</strong> Always confirm with the restaurant. This tool is advisory and uses a curated dataset.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- RIGHT: MENUS -->
+      <section class="card" aria-labelledby="menusTitle">
+        <div class="cardHead">
+          <div>
+            <h2 id="menusTitle">Check menus</h2>
+            <p class="sub">Search dishes, choose a restaurant, and get clear flags.</p>
+          </div>
+          <div class="legend" aria-label="Legend">
+            <span class="tag"><span class="dot good"></span> Safe</span>
+            <span class="tag"><span class="dot warn"></span> Risk</span>
+            <span class="tag"><span class="dot bad"></span> Unsafe</span>
+          </div>
+        </div>
+
+        <div class="toolbar">
+          <div class="grow">
+            <label for="searchBox">Search dishes</label>
+            <input id="searchBox" type="text" placeholder="Type a dish name..." />
+          </div>
+          <div class="small">
+            <label for="restaurantSelect">Restaurant</label>
+            <select id="restaurantSelect"></select>
+          </div>
+          <div class="small">
+            <label for="sortSelect">Sort</label>
+            <select id="sortSelect">
+              <option value="best">Safest first</option>
+              <option value="name">Dish name A–Z</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="menuList" id="menuList" aria-live="polite"></div>
+
+        <div class="note">
+          Dataset is an example for the project (curated menus). In a full system, menus could be updated through verified sources or restaurant inputs.
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- MODAL -->
+  <div class="backdrop" id="backdrop" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal">
+      <div class="modalHead">
+        <h3 id="modalTitle">Create account</h3>
+        <button class="btn small" id="closeModalBtn" type="button">Close</button>
+      </div>
+
+      <!-- Tabs shown ONLY while logged OUT -->
+      <div class="tabs" id="authTabs" role="tablist" aria-label="Auth tabs">
+        <button class="tab active" id="tabCreate" type="button" role="tab" aria-selected="true">Create account</button>
+        <button class="tab" id="tabLogin" type="button" role="tab" aria-selected="false">Log in</button>
+      </div>
+
+      <div class="modalBody">
+        <!-- CREATE ACCOUNT -->
+        <div id="panelCreate" class="stack" style="gap:14px;">
+          <div class="muted" style="font-size:12px;">
+            Create your account once, then log in anytime to use your saved profile.
+          </div>
+
+          <div class="row">
+            <div style="flex:1; min-width:220px;">
+              <label for="createName">Name</label>
+              <input id="createName" type="text" placeholder="e.g., Amir" autocomplete="off" />
+            </div>
+            <div style="width:140px;">
+              <label for="createAge">Age</label>
+              <input id="createAge" type="number" min="0" max="120" placeholder="e.g., 21" />
+            </div>
+          </div>
+
+          <div class="row">
+            <div style="flex:1; min-width:220px;">
+              <label for="createEmail">Email</label>
+              <input id="createEmail" type="text" placeholder="e.g., amir@email.com" autocomplete="off" />
+              <div class="helper">Stored in the database (no emails are sent in this prototype).</div>
+            </div>
+            <div style="flex:1; min-width:220px;">
+              <label for="createPass">Password</label>
+              <input id="createPass" type="password" placeholder="Create a password" autocomplete="new-password" />
+              <div class="helper">Stored securely (hashed). Don’t reuse a real password.</div>
+            </div>
+          </div>
+
+          <div>
+            <label for="createSeverity">Caution level</label>
+            <select id="createSeverity">
+              <option value="standard">Standard (flag direct matches + cross-contact)</option>
+              <option value="strict">Strict (treat cross-contact as unsafe)</option>
+            </select>
+            <div class="helper">Strict mode is safer if you have severe reactions.</div>
+          </div>
+
+          <div style="padding:12px; border:1px solid var(--line); border-radius:14px; background:rgba(0,0,0,.14)">
+            <div class="stack" style="gap:12px;">
+              <div>
+                <label for="allergyInput">Allergies</label>
+                <div class="row" style="margin-top:8px;">
+                  <input id="allergyInput" type="text" placeholder="e.g., peanuts, milk, sesame" autocomplete="off" />
+                  <button class="btn primary" id="addAllergyBtn" type="button">➕ Add</button>
+                </div>
+                <div class="chips" id="allergyChips" style="margin-top:10px;"></div>
+              </div>
+
+              <div>
+                <label for="intoleranceInput">Intolerances</label>
+                <div class="row" style="margin-top:8px;">
+                  <input id="intoleranceInput" type="text" placeholder="e.g., lactose, gluten, onion" autocomplete="off" />
+                  <button class="btn primary" id="addIntoleranceBtn" type="button">➕ Add</button>
+                </div>
+                <div class="chips" id="intoleranceChips" style="margin-top:10px;"></div>
+              </div>
+
+              <div>
+                <label for="preferenceInput">Preferences</label>
+                <div class="row" style="margin-top:8px;">
+                  <input id="preferenceInput" type="text" placeholder="e.g., halal, vegetarian, no pork" autocomplete="off" />
+                  <button class="btn primary" id="addPreferenceBtn" type="button">➕ Add</button>
+                </div>
+                <div class="chips" id="preferenceChips" style="margin-top:10px;"></div>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label for="createNotes">Notes (optional)</label>
+            <textarea id="createNotes" placeholder="e.g., ‘Carry EpiPen’ / ‘Ask for separate fryer’"></textarea>
+          </div>
+
+          <div class="row" style="justify-content:space-between;">
+            <button class="btn primary" id="createAccountConfirmBtn" type="button">✅ Create account</button>
+            <span class="muted" id="modalMsg" aria-live="polite"></span>
+          </div>
+        </div>
+
+        <!-- LOGIN -->
+        <div id="panelLogin" class="stack" style="gap:14px; display:none;">
+          <div class="muted" style="font-size:12px;">
+            Log in to load your saved profile from the database.
+          </div>
+
+          <div class="row">
+            <div style="flex:1; min-width:220px;">
+              <label for="loginEmail">Email</label>
+              <input id="loginEmail" type="text" placeholder="Email used at sign up" autocomplete="off" />
+            </div>
+            <div style="flex:1; min-width:220px;">
+              <label for="loginPass">Password</label>
+              <input id="loginPass" type="password" placeholder="Password" autocomplete="off" />
+            </div>
+          </div>
+
+          <div class="row" style="justify-content:space-between;">
+            <button class="btn primary" id="loginConfirmBtn" type="button">🔐 Log in</button>
+            <span class="muted" style="font-size:12px;">Database-backed prototype.</span>
+          </div>
+        </div>
+
+        <!-- PROFILE (only visible when logged IN) -->
+        <div id="panelProfile" class="stack" style="gap:14px; display:none;">
+          <div class="muted" style="font-size:12px;">
+            Edit your saved profile. Changes update dish flags instantly.
+          </div>
+
+          <div class="row">
+            <div style="flex:1; min-width:220px;">
+              <label for="editName">Name</label>
+              <input id="editName" type="text" placeholder="Name" autocomplete="off" />
+            </div>
+            <div style="width:140px;">
+              <label for="editAge">Age</label>
+              <input id="editAge" type="number" min="0" max="120" placeholder="Age" />
+            </div>
+          </div>
+
+          <div>
+            <label for="editSeverity">Caution level</label>
+            <select id="editSeverity">
+              <option value="standard">Standard (flag direct matches + cross-contact)</option>
+              <option value="strict">Strict (treat cross-contact as unsafe)</option>
+            </select>
+          </div>
+
+          <div style="padding:12px; border:1px solid var(--line); border-radius:14px; background:rgba(0,0,0,.14)">
+            <div class="stack" style="gap:12px;">
+              <div>
+                <label>Allergies</label>
+                <div class="row" style="margin-top:8px;">
+                  <input id="editAllergyInput" type="text" placeholder="Add allergy…" autocomplete="off" />
+                  <button class="btn primary" id="editAddAllergyBtn" type="button">➕ Add</button>
+                </div>
+                <div class="chips" id="editAllergyChips" style="margin-top:10px;"></div>
+              </div>
+
+              <div>
+                <label>Intolerances</label>
+                <div class="row" style="margin-top:8px;">
+                  <input id="editIntoleranceInput" type="text" placeholder="Add intolerance…" autocomplete="off" />
+                  <button class="btn primary" id="editAddIntoleranceBtn" type="button">➕ Add</button>
+                </div>
+                <div class="chips" id="editIntoleranceChips" style="margin-top:10px;"></div>
+              </div>
+
+              <div>
+                <label>Preferences</label>
+                <div class="row" style="margin-top:8px;">
+                  <input id="editPreferenceInput" type="text" placeholder="Add preference…" autocomplete="off" />
+                  <button class="btn primary" id="editAddPreferenceBtn" type="button">➕ Add</button>
+                </div>
+                <div class="chips" id="editPreferenceChips" style="margin-top:10px;"></div>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label for="editNotes">Notes (optional)</label>
+            <textarea id="editNotes" placeholder="Notes…"></textarea>
+          </div>
+
+          <div class="row" style="justify-content:space-between;">
+            <button class="btn primary" id="saveProfileBtn" type="button">💾 Save changes</button>
+            <span class="muted" id="profileMsg" aria-live="polite"></span>
+          </div>
+        </div>
+
+        <div class="note" style="margin:16px -16px -16px;">
+          <strong>Disclaimer:</strong> SafeBite is guidance only. Always confirm ingredients and cross-contact risk with the restaurant.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  /******************************
+   * SafeBite (DB-backed prototype)
+   ******************************/
+
+  /* =========================================================
+     DATA / ALIAS / PREF_RULES
+  ========================================================= */
+  const DATA = [
+    {
+      id: "harbor-grill",
+      name: "Harbor Grill",
+      location: "Sheffield",
+      cuisine: "Grill",
+      dishes: [
+        {
+          name: "Classic Beef Burger",
+          description: "Beef patty, brioche bun, lettuce, house sauce.",
+          ingredients: ["beef", "brioche", "egg", "mustard"],
+          mayContain: ["sesame", "dairy"],
+          notes: "Brioche contains gluten and egg; sauce contains egg/mustard."
+        },
+        {
+          name: "Grilled Chicken Salad",
+          description: "Chicken, mixed leaves, tomato, balsamic dressing.",
+          ingredients: ["chicken", "tomato", "balsamic", "sulphites"],
+          mayContain: ["nuts"],
+          notes: "Prepared in a shared kitchen."
+        },
+        {
+          name: "Chips (Shared Fryer)",
+          description: "Potato chips cooked in a shared fryer.",
+          ingredients: ["potato"],
+          mayContain: ["fish", "gluten"],
+          notes: "Shared fryer used for battered items."
+        },
+        {
+          name: "Steak & Peppercorn",
+          description: "Rump steak with peppercorn sauce and fries.",
+          ingredients: ["beef", "cream", "mustard"],
+          mayContain: ["gluten", "egg"],
+          notes: "Peppercorn sauce contains dairy and mustard."
+        },
+        {
+          name: "BBQ Chicken Wings",
+          description: "Sticky BBQ wings with slaw.",
+          ingredients: ["chicken", "bbq sauce", "mustard", "sulphites"],
+          mayContain: ["egg", "sesame"],
+          notes: "BBQ sauce may contain mustard/sulphites."
+        },
+        {
+          name: "Halloumi Skewers",
+          description: "Grilled halloumi with peppers and herbs.",
+          ingredients: ["halloumi", "spices"],
+          mayContain: ["sesame"],
+          notes: "Halloumi is dairy."
+        },
+        {
+          name: "Fish & Chips",
+          description: "Battered fish, chips, and tartare.",
+          ingredients: ["fish", "batter", "egg", "mustard"],
+          mayContain: ["dairy"],
+          notes: "Batter contains gluten; tartare contains egg/mustard."
+        },
+        {
+          name: "Garlic Mushroom Melt",
+          description: "Mushrooms on toast with garlic butter.",
+          ingredients: ["toast", "butter", "mushroom"],
+          mayContain: ["egg"],
+          notes: "Toast contains gluten; butter is dairy."
+        },
+        {
+          name: "Caesar Salad",
+          description: "Romaine, croutons, parmesan, Caesar dressing.",
+          ingredients: ["romaine", "croutons", "parmesan", "anchovy"],
+          mayContain: ["mustard"],
+          notes: "Classic Caesar includes fish (anchovy) + egg + dairy."
+        },
+        {
+          name: "Lamb Kofta Plate",
+          description: "Spiced lamb kofta with rice and salad.",
+          ingredients: ["lamb", "spices"],
+          mayContain: ["sesame", "nuts"],
+          notes: "Often served with tahini-style dressing (sesame)."
+        }
+      ]
+    },
+    {
+      id: "spice-leaf",
+      name: "Spice Leaf",
+      location: "Leeds",
+      cuisine: "Indian",
+      dishes: [
+        {
+          name: "Chicken Tikka Masala",
+          description: "Creamy tomato curry with rice.",
+          ingredients: ["chicken", "cream", "tomato", "spices"],
+          mayContain: ["nuts"],
+          notes: "Contains dairy; kitchen uses nuts."
+        },
+        {
+          name: "Chana Masala (Vegan)",
+          description: "Chickpea curry with spices.",
+          ingredients: ["chickpeas", "tomato", "spices"],
+          mayContain: ["nuts", "sesame"],
+          notes: "No dairy listed, but cross-contact possible."
+        },
+        {
+          name: "Garlic Naan",
+          description: "Baked flatbread with garlic butter.",
+          ingredients: ["naan", "butter"],
+          mayContain: ["sesame"],
+          notes: "Contains gluten + dairy."
+        },
+        {
+          name: "Saag Paneer",
+          description: "Spinach curry with paneer.",
+          ingredients: ["paneer", "spices", "spinach"],
+          mayContain: ["nuts"],
+          notes: "Paneer is dairy."
+        },
+        {
+          name: "Vegetable Samosa",
+          description: "Crispy pastry with spiced veg filling.",
+          ingredients: ["pastry", "spices"],
+          mayContain: ["egg", "dairy"],
+          notes: "Fried in shared oil; pastry contains gluten."
+        },
+        {
+          name: "Mango Lassi",
+          description: "Sweet yoghurt drink with mango.",
+          ingredients: ["yoghurt", "mango"],
+          mayContain: ["nuts"],
+          notes: "Yoghurt is dairy."
+        }
+      ]
+    }
+  ];
+
+  const ALIAS = new Map([
+    // Nuts
+    ["peanut", "nuts"], ["peanuts", "nuts"],
+    ["tree nut", "nuts"], ["tree nuts", "nuts"],
+    ["almond", "nuts"], ["walnut", "nuts"], ["cashew", "nuts"], ["pistachio", "nuts"], ["hazelnut", "nuts"], ["pecan", "nuts"],
+
+    // Dairy -> milk (canonical "milk")
+    ["dairy", "milk"], ["lactose", "milk"], ["milk", "milk"],
+    ["cheese", "milk"], ["butter", "milk"], ["cream", "milk"], ["yoghurt", "milk"], ["yogurt", "milk"],
+    ["paneer", "milk"], ["halloumi", "milk"], ["parmesan", "milk"], ["mozzarella", "milk"], ["mascarpone", "milk"],
+    ["whey", "milk"], ["casein", "milk"],
+
+    // Egg
+    ["egg", "egg"], ["eggs", "egg"],
+
+    // Gluten -> wheat (canonical "wheat")
+    ["wheat", "wheat"], ["gluten", "wheat"],
+    ["bread", "wheat"], ["bun", "wheat"], ["brioche", "wheat"],
+    ["batter", "wheat"], ["pastry", "wheat"], ["croutons", "wheat"],
+    ["naan", "wheat"], ["toast", "wheat"], ["tortilla", "wheat"], ["pasta", "wheat"],
+
+    // Sesame
+    ["sesame", "sesame"], ["tahini", "sesame"],
+
+    // Mustard
+    ["mustard", "mustard"],
+
+    // Fish / shellfish
+    ["fish", "fish"], ["anchovy", "fish"], ["salmon", "fish"], ["tuna", "fish"], ["cod", "fish"],
+    ["shellfish", "shellfish"], ["prawn", "shellfish"], ["prawns", "shellfish"], ["shrimp", "shellfish"],
+
+    // Soya
+    ["soya", "soya"], ["soy", "soya"], ["tofu", "soya"], ["miso", "soya"],
+
+    // Sulphites
+    ["sulphites", "sulphites"], ["sulfites", "sulphites"],
+
+    // Pork / alcohol
+    ["pork", "pork"], ["bacon", "pork"], ["ham", "pork"], ["pepperoni", "pork"],
+    ["alcohol", "alcohol"], ["wine", "alcohol"], ["beer", "alcohol"], ["rum", "alcohol"], ["brandy", "alcohol"], ["vodka", "alcohol"], ["whisky", "alcohol"], ["whiskey", "alcohol"],
+  ]);
+
+  const PREF_RULES = [
+    { key: "halal", hits: ["pork", "bacon", "ham", "pepperoni", "alcohol", "wine", "beer", "rum", "vodka", "whisky", "whiskey"], reason: "Preference: halal (contains pork or alcohol)" },
+    { key: "kosher", hits: ["pork", "bacon", "ham", "pepperoni", "shellfish", "prawn", "shrimp", "alcohol", "wine", "beer"], reason: "Preference: kosher (contains pork/shellfish/alcohol)" },
+
+    { key: "vegetarian", hits: ["beef", "chicken", "fish", "pork", "lamb", "shellfish"], reason: "Preference: vegetarian (includes meat/fish)" },
+    { key: "vegan", hits: ["beef", "chicken", "fish", "pork", "lamb", "shellfish", "milk", "dairy", "cheese", "egg", "honey", "butter", "cream", "yoghurt", "yogurt"], reason: "Preference: vegan (includes animal products)" },
+
+    { key: "no pork", hits: ["pork", "bacon", "ham", "pepperoni"], reason: "Preference: no pork" },
+    { key: "gluten free", hits: ["wheat", "gluten", "bread", "bun", "batter", "pastry", "pasta", "naan", "croutons", "toast", "brioche"], reason: "Preference: gluten-free (contains gluten)" },
+    { key: "dairy free", hits: ["milk", "dairy", "cheese", "butter", "cream", "yoghurt", "yogurt", "paneer", "halloumi", "parmesan"], reason: "Preference: dairy-free (contains dairy)" }
+  ];
+
+  /* ===========================
+     Elements
+  =========================== */
+  const profileSummary = document.getElementById("profileSummary");
+  const createAccountBtn = document.getElementById("createAccountBtn");
+  const loginBtn = document.getElementById("loginBtn");
+  const profileBtn = document.getElementById("profileBtn");
+  const logoutBtn = document.getElementById("logoutBtn");
+
+  const signedOutPanel = document.getElementById("signedOutPanel");
+  const profilePanel = document.getElementById("profilePanel");
+
+  const signedOutCreateBtn = document.getElementById("signedOutCreateBtn");
+  const signedOutLoginBtn = document.getElementById("signedOutLoginBtn");
+  const editProfileBtn = document.getElementById("editProfileBtn");
+
+  // Profile display (left panel)
+  const pName = document.getElementById("pName");
+  const pMeta = document.getElementById("pMeta");
+  const pMode = document.getElementById("pMode");
+  const pAllergies = document.getElementById("pAllergies");
+  const pIntolerances = document.getElementById("pIntolerances");
+  const pPreferences = document.getElementById("pPreferences");
+  const pNotes = document.getElementById("pNotes");
+
+  // Menus
+  const searchBox = document.getElementById("searchBox");
+  const restaurantSelect = document.getElementById("restaurantSelect");
+  const sortSelect = document.getElementById("sortSelect");
+  const menuList = document.getElementById("menuList");
+
+  // Modal
+  const backdrop = document.getElementById("backdrop");
+  const modalTitle = document.getElementById("modalTitle");
+  const closeModalBtn = document.getElementById("closeModalBtn");
+  const authTabs = document.getElementById("authTabs");
+  const tabCreate = document.getElementById("tabCreate");
+  const tabLogin = document.getElementById("tabLogin");
+
+  const panelCreate = document.getElementById("panelCreate");
+  const panelLogin = document.getElementById("panelLogin");
+  const panelProfileModal = document.getElementById("panelProfile");
+
+  // Create account fields
+  const createName = document.getElementById("createName");
+  const createAge = document.getElementById("createAge");
+  const createEmail = document.getElementById("createEmail");
+  const createPass = document.getElementById("createPass");
+  const createSeverity = document.getElementById("createSeverity");
+  const createNotes = document.getElementById("createNotes");
+  const modalMsg = document.getElementById("modalMsg");
+
+  // Draft add inputs (create)
+  const allergyInput = document.getElementById("allergyInput");
+  const addAllergyBtn = document.getElementById("addAllergyBtn");
+  const allergyChips = document.getElementById("allergyChips");
+
+  const intoleranceInput = document.getElementById("intoleranceInput");
+  const addIntoleranceBtn = document.getElementById("addIntoleranceBtn");
+  const intoleranceChips = document.getElementById("intoleranceChips");
+
+  const preferenceInput = document.getElementById("preferenceInput");
+  const addPreferenceBtn = document.getElementById("addPreferenceBtn");
+  const preferenceChips = document.getElementById("preferenceChips");
+
+  const createAccountConfirmBtn = document.getElementById("createAccountConfirmBtn");
+
+  // Login fields
+  const loginEmail = document.getElementById("loginEmail");
+  const loginPass = document.getElementById("loginPass");
+  const loginConfirmBtn = document.getElementById("loginConfirmBtn");
+
+  // Profile modal (edit) fields
+  const editName = document.getElementById("editName");
+  const editAge = document.getElementById("editAge");
+  const editSeverity = document.getElementById("editSeverity");
+  const editNotes = document.getElementById("editNotes");
+  const profileMsg = document.getElementById("profileMsg");
+
+  const editAllergyInput = document.getElementById("editAllergyInput");
+  const editAddAllergyBtn = document.getElementById("editAddAllergyBtn");
+  const editAllergyChips = document.getElementById("editAllergyChips");
+
+  const editIntoleranceInput = document.getElementById("editIntoleranceInput");
+  const editAddIntoleranceBtn = document.getElementById("editAddIntoleranceBtn");
+  const editIntoleranceChips = document.getElementById("editIntoleranceChips");
+
+  const editPreferenceInput = document.getElementById("editPreferenceInput");
+  const editAddPreferenceBtn = document.getElementById("editAddPreferenceBtn");
+  const editPreferenceChips = document.getElementById("editPreferenceChips");
+
+  const saveProfileBtn = document.getElementById("saveProfileBtn");
+
+  /* ===========================
+     State
+  =========================== */
+  let session = { loggedIn:false, userId:null };
+  let account = null;
+
+  // Draft lists while creating an account (before DB save)
+  let draft = { allergies:[], intolerances:[], preferences:[] };
+
+  /* ===========================
+     Helpers
+  =========================== */
+  function normalise(s){
+    const raw = (s || "").trim().toLowerCase();
+    if(!raw) return "";
+    if (ALIAS.has(raw)) return ALIAS.get(raw);
+    if (raw.endsWith("s") && ALIAS.has(raw.slice(0,-1))) return ALIAS.get(raw.slice(0,-1));
+    return raw;
+  }
+  function normalisePref(s){
+    return (s || "").trim().toLowerCase().replace(/\s+/g," ");
+  }
+  function uniq(arr){ return Array.from(new Set(arr)); }
+
+  function escapeHtml(str){
+    return String(str)
+      .replaceAll("&","&amp;")
+      .replaceAll("<","&lt;")
+      .replaceAll(">","&gt;")
+      .replaceAll('"',"&quot;")
+      .replaceAll("'","&#039;");
+  }
+
+  function renderChipList(container, items, onRemove){
+    container.innerHTML = "";
+    if(!items || items.length === 0){
+      const p = document.createElement("p");
+      p.className = "muted";
+      p.style.margin = "4px 0 0";
+      p.textContent = "None added yet.";
+      container.appendChild(p);
+      return;
+    }
+    items.forEach(val=>{
+      const chip = document.createElement("span");
+      chip.className = "chip";
+      chip.innerHTML = `<span>${escapeHtml(val)}</span>`;
+      if(onRemove){
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.setAttribute("aria-label", `Remove ${val}`);
+        btn.textContent = "×";
+        btn.addEventListener("click", ()=> onRemove(val));
+        chip.appendChild(btn);
+      }
+      container.appendChild(chip);
+    });
+  }
+
+  function renderDraftChips(){
+    renderChipList(allergyChips, draft.allergies, (x)=>{
+      draft.allergies = draft.allergies.filter(t=>t!==x);
+      renderDraftChips();
+      renderMenus();
+    });
+    renderChipList(intoleranceChips, draft.intolerances, (x)=>{
+      draft.intolerances = draft.intolerances.filter(t=>t!==x);
+      renderDraftChips();
+      renderMenus();
+    });
+    renderChipList(preferenceChips, draft.preferences, (x)=>{
+      draft.preferences = draft.preferences.filter(t=>t!==x);
+      renderDraftChips();
+      renderMenus();
+    });
+  }
+
+  /* ===========================
+     Minimal session storage
+  =========================== */
+  const STORAGE_UID = "safebite_uid_v1";
+  function saveUid(){
+    if(session.userId) sessionStorage.setItem(STORAGE_UID, String(session.userId));
+    else sessionStorage.removeItem(STORAGE_UID);
+  }
+  function loadUid(){
+    const v = sessionStorage.getItem(STORAGE_UID);
+    return v ? Number(v) : null;
+  }
+
+  /* ===========================
+     API helpers
+  =========================== */
+  async function apiPost(url, body){
+    const res = await fetch(url, {
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify(body)
+    });
+    const data = await res.json().catch(()=> ({}));
+    return { res, data };
+  }
+
+  async function loadProfileFromDb(userId){
+    const res = await fetch(`api_profile.php?userId=${encodeURIComponent(userId)}`);
+    const data = await res.json().catch(()=> ({}));
+    if(!res.ok || !data.ok) throw new Error(data.error || "Failed to load profile");
+    return data.profile;
+  }
+
+  /* ===========================
+     UI / session toggles
+  =========================== */
+  function setLoggedIn(on, userId=null){
+    session.loggedIn = !!on;
+    session.userId = on ? userId : null;
+    saveUid();
+    renderHeader();
+    renderLeftPanel();
+    renderMenus();
+    renderProfileCard();
+  }
+
+  function openModal(mode){
+    backdrop.style.display = "flex";
+    modalMsg.textContent = "";
+    profileMsg.textContent = "";
+
+    if(session.loggedIn){
+      authTabs.style.display = "none";
+      panelCreate.style.display = "none";
+      panelLogin.style.display = "none";
+      panelProfileModal.style.display = "block";
+      modalTitle.textContent = "Your profile";
+      syncProfileEditorFromAccount();
+      setTimeout(()=> editName.focus(), 0);
+      return;
+    }
+
+    authTabs.style.display = "inline-flex";
+    setTab(mode === "login" ? "login" : "create");
+    setTimeout(()=> (mode === "login" ? loginEmail : createName).focus(), 0);
+  }
+
+  function closeModal(){
+    backdrop.style.display = "none";
+    modalMsg.textContent = "";
+    profileMsg.textContent = "";
+  }
+
+  function setTab(which){
+    const isCreate = which === "create";
+    tabCreate.classList.toggle("active", isCreate);
+    tabLogin.classList.toggle("active", !isCreate);
+    tabCreate.setAttribute("aria-selected", String(isCreate));
+    tabLogin.setAttribute("aria-selected", String(!isCreate));
+
+    panelCreate.style.display = isCreate ? "block" : "none";
+    panelLogin.style.display = isCreate ? "none" : "block";
+    panelProfileModal.style.display = "none";
+
+    modalTitle.textContent = isCreate ? "Create account" : "Log in";
+  }
+
+  function renderHeader(){
+    if(session.loggedIn){
+      createAccountBtn.style.display = "none";
+      loginBtn.style.display = "none";
+      profileBtn.style.display = "inline-flex";
+      logoutBtn.style.display = "inline-flex";
+
+      const n = (account?.name || "").trim();
+      profileSummary.textContent = n ? `Signed in • ${n}` : "Signed in";
+    } else {
+      createAccountBtn.style.display = "inline-flex";
+      loginBtn.style.display = "inline-flex";
+      profileBtn.style.display = "none";
+      logoutBtn.style.display = "none";
+      profileSummary.textContent = "Not signed in";
+    }
+  }
+
+  function renderLeftPanel(){
+    if(!session.loggedIn){
+      signedOutPanel.style.display = "grid";
+      profilePanel.style.display = "none";
+      return;
+    }
+    signedOutPanel.style.display = "none";
+    profilePanel.style.display = "block";
+  }
+
+  function renderProfileCard(){
+    if(!session.loggedIn || !account) return;
+    pName.textContent = account.name || "—";
+    pMeta.textContent = account.email || "—";
+    pMode.textContent = (account.severity === "strict") ? "Strict" : "Standard";
+    renderChipList(pAllergies, account.allergies || []);
+    renderChipList(pIntolerances, account.intolerances || []);
+    renderChipList(pPreferences, account.preferences || []);
+    pNotes.textContent = account.notes ? account.notes : "—";
+  }
+
+  function syncProfileEditorFromAccount(){
+    editName.value = account?.name || "";
+    editAge.value = (account?.age === 0 || account?.age) ? String(account.age) : "";
+    editSeverity.value = account?.severity === "strict" ? "strict" : "standard";
+    editNotes.value = account?.notes || "";
+
+    renderChipList(editAllergyChips, account?.allergies || [], (v)=>{
+      account.allergies = (account.allergies || []).filter(x=>x!==v);
+      syncProfileEditorFromAccount();
+      renderMenus();
+      renderProfileCard();
+    });
+    renderChipList(editIntoleranceChips, account?.intolerances || [], (v)=>{
+      account.intolerances = (account.intolerances || []).filter(x=>x!==v);
+      syncProfileEditorFromAccount();
+      renderMenus();
+      renderProfileCard();
+    });
+    renderChipList(editPreferenceChips, account?.preferences || [], (v)=>{
+      account.preferences = (account.preferences || []).filter(x=>x!==v);
+      syncProfileEditorFromAccount();
+      renderMenus();
+      renderProfileCard();
+    });
+  }
+
+  function addToAccount(listKey, raw, normaliser){
+    const v = normaliser(raw);
+    if(!v) return;
+    account[listKey] = uniq([...(account[listKey] || []), v]).sort((a,b)=>a.localeCompare(b));
+    syncProfileEditorFromAccount();
+    renderMenus();
+    renderProfileCard();
+  }
+
+  /* ===========================
+     Create account (DB)
+  =========================== */
+  async function createAccount(){
+    const name = (createName.value || "").trim();
+    const email = (createEmail.value || "").trim().toLowerCase();
+    const pass = (createPass.value || "").trim();
+
+    if(!name){ modalMsg.textContent = "Please enter your name."; return; }
+    if(!email || !email.includes("@")){ modalMsg.textContent = "Please enter a valid email."; return; }
+    if(pass.length < 4){ modalMsg.textContent = "Password must be at least 4 characters."; return; }
+
+    const ageRaw = (createAge.value || "").trim();
+    const age = ageRaw === "" ? null : Math.max(0, Math.min(120, Number(ageRaw)));
+
+    const payload = {
+      name,
+      age,
+      email,
+      pass,
+      severity: createSeverity.value === "strict" ? "strict" : "standard",
+      allergies: draft.allergies.slice(),
+      intolerances: draft.intolerances.slice(),
+      preferences: draft.preferences.slice(),
+      notes: createNotes.value || ""
+    };
+
+    modalMsg.textContent = "Creating account...";
+
+    const { res, data } = await apiPost("api_signup.php", payload);
+    if(!res.ok || !data.ok){
+      modalMsg.textContent = data.error || "Failed to create account.";
+      return;
+    }
+
+    modalMsg.textContent = "✅ Account created and saved. You can now log in.";
+    // optional: clear draft for next time
+    draft = { allergies:[], intolerances:[], preferences:[] };
+    renderDraftChips();
+
+    setTimeout(()=> setTab("login"), 600);
+  }
+
+  /* ===========================
+     Login (DB) + load profile
+  =========================== */
+  async function doLogin(){
+    const email = (loginEmail.value || "").trim().toLowerCase();
+    const pass = (loginPass.value || "").trim();
+
+    if(!email || !email.includes("@")){ modalMsg.textContent = "Enter your email."; return; }
+    if(!pass){ modalMsg.textContent = "Enter your password."; return; }
+
+    modalMsg.textContent = "Logging in...";
+
+    const { res, data } = await apiPost("api_login.php", { email, pass });
+    if(!res.ok || !data.ok){
+      modalMsg.textContent = data.error || "Login failed.";
+      return;
+    }
+
+    const userId = data.userId;
+    account = await loadProfileFromDb(userId);
+    account.severity = account.severity || "standard";
+    setLoggedIn(true, userId);
+    closeModal();
+  }
+
+  /* ===========================
+     Save profile (DB)
+  =========================== */
+  async function saveProfileToDb(){
+    if(!session.loggedIn || !session.userId || !account) return;
+
+    account.name = editName.value || "";
+    const ageRaw = (editAge.value || "").trim();
+    account.age = ageRaw === "" ? null : Math.max(0, Math.min(120, Number(ageRaw)));
+    account.severity = editSeverity.value === "strict" ? "strict" : "standard";
+    account.notes = editNotes.value || "";
+
+    profileMsg.textContent = "Saving...";
+
+    const payload = {
+      userId: session.userId,
+      name: account.name,
+      age: account.age,
+      severity: account.severity,
+      notes: account.notes,
+      allergies: account.allergies || [],
+      intolerances: account.intolerances || [],
+      preferences: account.preferences || []
+    };
+
+    const { res, data } = await apiPost("api_profile.php", payload);
+    if(!res.ok || !data.ok){
+      profileMsg.textContent = data.error || "Save failed.";
+      return;
+    }
+
+    profileMsg.textContent = "Saved ✓";
+    setTimeout(()=> profileMsg.textContent = "", 1200);
+
+    renderHeader();
+    renderMenus();
+    renderProfileCard();
+    closeModal();
+  }
+
+  /* ===========================
+     Menus
+  =========================== */
+  function populateRestaurants(){
+    restaurantSelect.innerHTML = "";
+
+    const allOpt = document.createElement("option");
+    allOpt.value = "all";
+    allOpt.textContent = "All restaurants";
+    restaurantSelect.appendChild(allOpt);
+
+    DATA.forEach(r=>{
+      const opt = document.createElement("option");
+      opt.value = r.id;
+      opt.textContent = `${r.name} — ${r.location}`;
+      restaurantSelect.appendChild(opt);
+    });
+  }
+
+  function classifyDish(dish){
+    if(!session.loggedIn || !account){
+      return { level:"warn", label:"Sign in", icon:"ℹ️", reasons:["Sign in to see personalised dish flags."] };
+    }
+
+    const cautionList = uniq([...(account.allergies || []), ...(account.intolerances || [])]).map(normalise);
+    const ingRaw = (dish.ingredients || []).map(x => String(x).toLowerCase());
+    const mayRaw = (dish.mayContain || []).map(x => String(x).toLowerCase());
+
+    const ing = ingRaw.map(normalise);
+    const may = mayRaw.map(normalise);
+
+    const directHits = cautionList.filter(a => ing.includes(a));
+    const mayHits = cautionList.filter(a => may.includes(a));
+
+    const prefReasons = [];
+    const prefSet = new Set((account.preferences || []).map(normalisePref));
+    if(prefSet.size){
+      for(const rule of PREF_RULES){
+        if(!prefSet.has(rule.key)) continue;
+        const hit = rule.hits.some(t=>{
+          const term = String(t).toLowerCase();
+          return ingRaw.includes(term) || ing.includes(normalise(term));
+        });
+        if(hit) prefReasons.push(rule.reason);
+      }
+    }
+
+    if(directHits.length > 0){
+      return { level:"bad", label:"Unsafe", icon:"⛔", reasons:[`Contains: ${directHits.join(", ")}`, ...prefReasons] };
+    }
+    if(prefReasons.length > 0){
+      return { level:"bad", label:"Unsafe (preference)", icon:"⛔", reasons:[...prefReasons] };
+    }
+    if(mayHits.length > 0){
+      if(account.severity === "strict"){
+        return { level:"bad", label:"Unsafe (strict)", icon:"⛔", reasons:[`Possible cross-contact: ${mayHits.join(", ")}`] };
+      }
+      return { level:"warn", label:"Risk", icon:"⚠️", reasons:[`May contain / cross-contact: ${mayHits.join(", ")}`] };
+    }
+    return { level:"good", label:"Safe (based on data)", icon:"✅", reasons:["No matches found in ingredients or warnings."] };
+  }
+
+  function scoreForSort(level){
+    if(level === "good") return 3;
+    if(level === "warn") return 2;
+    if(level === "bad") return 1;
+    return 0;
+  }
+
+  function renderMenus(){
+    const q = (searchBox.value || "").trim().toLowerCase();
+    const chosen = restaurantSelect.value || "all";
+    const sort = sortSelect.value;
+
+    const restaurants = chosen === "all" ? DATA : DATA.filter(r => r.id === chosen);
+    menuList.innerHTML = "";
+
+    restaurants.forEach(r=>{
+      const container = document.createElement("article");
+      container.className = "restaurant";
+
+      const head = document.createElement("div");
+      head.className = "restHead";
+      head.innerHTML = `
+        <div>
+          <h3>${escapeHtml(r.name)}</h3>
+          <p>${escapeHtml(r.cuisine)} • ${escapeHtml(r.location)}</p>
+        </div>
+        <div class="restMeta">
+          <span class="badge">${escapeHtml(r.dishes.length)} dishes</span>
+        </div>
+      `;
+
+      const dishesWrap = document.createElement("div");
+      dishesWrap.className = "dishes";
+
+      let dishes = r.dishes.filter(d=>{
+        if(!q) return true;
+        return (
+          (d.name || "").toLowerCase().includes(q) ||
+          (d.description || "").toLowerCase().includes(q) ||
+          (d.ingredients || []).some(x => String(x).toLowerCase().includes(q)) ||
+          (d.mayContain || []).some(x => String(x).toLowerCase().includes(q))
+        );
+      });
+
+      dishes = dishes.map(d => ({ dish: d, status: classifyDish(d) }));
+
+      if(sort === "best"){
+        dishes.sort((a,b)=>
+          scoreForSort(b.status.level) - scoreForSort(a.status.level) ||
+          a.dish.name.localeCompare(b.dish.name)
+        );
+      } else {
+        dishes.sort((a,b)=> a.dish.name.localeCompare(b.dish.name));
+      }
+
+      dishes.forEach(({dish, status})=>{
+        const item = document.createElement("div");
+        item.className = "dish";
+
+        const right = document.createElement("div");
+        right.className = "right";
+
+        const statusEl = document.createElement("div");
+        statusEl.className = `status ${status.level}`;
+        statusEl.innerHTML = `<span class="icon" aria-hidden="true">${status.icon}</span><span>${escapeHtml(status.label)}</span>`;
+
+        const detailsBtn = document.createElement("button");
+        detailsBtn.className = "btn detailsBtn";
+        detailsBtn.type = "button";
+        detailsBtn.textContent = "Details";
+        detailsBtn.setAttribute("aria-expanded","false");
+
+        const details = document.createElement("div");
+        details.className = "details";
+        details.innerHTML = `
+          <div class="muted" style="font-size:12px;">
+            <strong style="color:rgba(234,240,255,.92)">Ingredients:</strong>
+            ${escapeHtml((dish.ingredients || []).join(", ") || "Not listed")}
+            <br/>
+            <strong style="color:rgba(234,240,255,.92)">May contain:</strong>
+            ${escapeHtml((dish.mayContain || []).join(", ") || "None listed")}
+          </div>
+          <ul>
+            ${status.reasons.map(x=>`<li>${escapeHtml(x)}</li>`).join("")}
+            ${dish.notes ? `<li>${escapeHtml(dish.notes)}</li>` : ""}
+          </ul>
+        `;
+
+        detailsBtn.addEventListener("click", ()=>{
+          const open = details.style.display === "block";
+          details.style.display = open ? "none" : "block";
+          detailsBtn.setAttribute("aria-expanded", String(!open));
+          detailsBtn.textContent = open ? "Details" : "Hide";
+        });
+
+        right.appendChild(statusEl);
+        right.appendChild(detailsBtn);
+
+        item.innerHTML = `
+          <div>
+            <h4>${escapeHtml(dish.name)}</h4>
+            <p>${escapeHtml(dish.description || "")}</p>
+          </div>
+        `;
+        item.appendChild(right);
+        item.appendChild(details);
+        dishesWrap.appendChild(item);
+      });
+
+      container.appendChild(head);
+      container.appendChild(dishesWrap);
+      menuList.appendChild(container);
+    });
+  }
+
+  /* ===========================
+     Events
+  =========================== */
+  closeModalBtn.addEventListener("click", closeModal);
+  backdrop.addEventListener("click", (e)=>{ if(e.target === backdrop) closeModal(); });
+  backdrop.querySelector(".modal")?.addEventListener("click", (e) => e.stopPropagation());
+
+  tabCreate.addEventListener("click", ()=> setTab("create"));
+  tabLogin.addEventListener("click", ()=> setTab("login"));
+
+  createAccountBtn.addEventListener("click", ()=> openModal("create"));
+  loginBtn.addEventListener("click", ()=> openModal("login"));
+  profileBtn.addEventListener("click", ()=> openModal("profile"));
+
+  signedOutCreateBtn.addEventListener("click", ()=> openModal("create"));
+  signedOutLoginBtn.addEventListener("click", ()=> openModal("login"));
+  editProfileBtn.addEventListener("click", ()=> openModal("profile"));
+
+  logoutBtn.addEventListener("click", ()=>{
+    account = null;
+    setLoggedIn(false, null);
+    closeModal();
+  });
+
+  // Draft add (create)
+  addAllergyBtn.addEventListener("click", ()=>{
+    const v = normalise(allergyInput.value);
+    if(!v) return;
+    draft.allergies = uniq([...draft.allergies, v]).sort((a,b)=>a.localeCompare(b));
+    allergyInput.value = "";
+    renderDraftChips();
+    renderMenus();
+  });
+  allergyInput.addEventListener("keydown", (e)=>{ if(e.key==="Enter"){ e.preventDefault(); addAllergyBtn.click(); } });
+
+  addIntoleranceBtn.addEventListener("click", ()=>{
+    const v = normalise(intoleranceInput.value);
+    if(!v) return;
+    draft.intolerances = uniq([...draft.intolerances, v]).sort((a,b)=>a.localeCompare(b));
+    intoleranceInput.value = "";
+    renderDraftChips();
+    renderMenus();
+  });
+  intoleranceInput.addEventListener("keydown", (e)=>{ if(e.key==="Enter"){ e.preventDefault(); addIntoleranceBtn.click(); } });
+
+  addPreferenceBtn.addEventListener("click", ()=>{
+    const v = normalisePref(preferenceInput.value);
+    if(!v) return;
+    draft.preferences = uniq([...draft.preferences, v]).sort((a,b)=>a.localeCompare(b));
+    preferenceInput.value = "";
+    renderDraftChips();
+    renderMenus();
+  });
+  preferenceInput.addEventListener("keydown", (e)=>{ if(e.key==="Enter"){ e.preventDefault(); addPreferenceBtn.click(); } });
+
+  createAccountConfirmBtn.addEventListener("click", ()=>{ createAccount().catch(()=>{ modalMsg.textContent="Server error"; }); });
+  loginConfirmBtn.addEventListener("click", ()=>{ doLogin().catch(()=>{ modalMsg.textContent="Server error"; }); });
+
+  // Profile editor add (logged in)
+  editAddAllergyBtn.addEventListener("click", ()=>{
+    if(!account) return;
+    addToAccount("allergies", editAllergyInput.value, normalise);
+    editAllergyInput.value = "";
+    editAllergyInput.focus();
+  });
+  editAllergyInput.addEventListener("keydown", (e)=>{ if(e.key==="Enter"){ e.preventDefault(); editAddAllergyBtn.click(); } });
+
+  editAddIntoleranceBtn.addEventListener("click", ()=>{
+    if(!account) return;
+    addToAccount("intolerances", editIntoleranceInput.value, normalise);
+    editIntoleranceInput.value = "";
+    editIntoleranceInput.focus();
+  });
+  editIntoleranceInput.addEventListener("keydown", (e)=>{ if(e.key==="Enter"){ e.preventDefault(); editAddIntoleranceBtn.click(); } });
+
+  editAddPreferenceBtn.addEventListener("click", ()=>{
+    if(!account) return;
+    addToAccount("preferences", editPreferenceInput.value, normalisePref);
+    editPreferenceInput.value = "";
+    editPreferenceInput.focus();
+  });
+  editPreferenceInput.addEventListener("keydown", (e)=>{ if(e.key==="Enter"){ e.preventDefault(); editAddPreferenceBtn.click(); } });
+
+  saveProfileBtn.addEventListener("click", ()=>{ saveProfileToDb().catch(()=>{ profileMsg.textContent="Server error"; }); });
+
+  // Filters
+  searchBox.addEventListener("input", renderMenus);
+  restaurantSelect.addEventListener("change", renderMenus);
+  sortSelect.addEventListener("change", renderMenus);
+
+  /* ===========================
+     Init
+  =========================== */
+  (async function init(){
+    populateRestaurants();
+    renderDraftChips();
+
+    // default UI when not logged in
+    setLoggedIn(false, null);
+
+    // restore session
+    const uid = loadUid();
+    if(uid){
+      try{
+        account = await loadProfileFromDb(uid);
+        account.severity = account.severity || "standard";
+        setLoggedIn(true, uid);
+      }catch(e){
+        setLoggedIn(false, null);
+      }
+    }
+
+    renderHeader();
+    renderLeftPanel();
+    renderMenus();
+    renderProfileCard();
+  })();
+
+  // Allergy guide accordion
+  document.querySelectorAll("#allergyGuide .infoItem").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      const details = btn.nextElementSibling;
+
+      document.querySelectorAll(".infoDetails").forEach(d=>{
+        if(d !== details) d.style.display = "none";
+      });
+      document.querySelectorAll(".infoItem").forEach(b=>{
+        if(b !== btn) b.classList.remove("active");
+      });
+
+      const open = details.style.display === "block";
+      details.style.display = open ? "none" : "block";
+      btn.classList.toggle("active", !open);
+    });
+  });
+
+
+  
+  </script>
+
+  <script src="./pwa.js"></script>
+</body>
+</html>
